@@ -1,0 +1,88 @@
+name: Go Release Workflow
+
+on:
+  push:
+    tags:
+      - 'v*'  # 只在推送符合 'v*' 模式的标签时触发流程
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # 默认使用 Linux 环境
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]  # 支持的平台
+        architecture: [amd64, arm64]  # 支持的架构 (Windows 和 Mac 使用 amd64 和 arm64)
+
+    steps:
+      # Checkout 代码
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 设置 Go 环境
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.23.3'  # 使用 Go 1.23.3 版本
+
+      # 构建 Go 项目
+      - name: Build Go project
+        run: |
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.architecture }} go build -o target/myapp-${{ matrix.os }}-${{ matrix.architecture }} .
+
+      # 上传构建产物
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: go-release-binaries
+          path: target/*  # 上传所有构建的文件
+
+  release:
+    needs: build  # 依赖于 'build' 作业完成后运行
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}  # 使用推送的 Git 标签作为 Release 标签
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            This release includes binaries for multiple platforms:
+            - Windows
+            - macOS ARM
+            - Linux
+
+      # 上传构建产物到 Release
+      - name: Upload Windows binary
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-release-asset@v1
+        with:
+          release_id: ${{ steps.create-release.outputs.id }}
+          asset_path: target/ollama-assistant-windows-amd64.exe  # 替换为 Windows 构建的可执行文件路径
+          asset_name: myapp-windows-amd64.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload macOS ARM binary
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-release-asset@v1
+        with:
+          release_id: ${{ steps.create-release.outputs.id }}
+          asset_path: target/ollama-assistant-darwin-arm64  # 替换为 macOS ARM 构建的可执行文件路径
+          asset_name: myapp-darwin-arm64
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux binary
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-release-asset@v1
+        with:
+          release_id: ${{ steps.create-release.outputs.id }}
+          asset_path: target/ollama-assistant-linux-amd64  # 替换为 Linux 构建的可执行文件路径
+          asset_name: myapp-linux-amd64
+          asset_content_type: application/octet-stream
