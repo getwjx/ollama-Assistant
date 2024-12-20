@@ -31,3 +31,4 @@
 2、下载可执行文件
 3、Terminal运行可执行文件
 
+<img width="474" alt="Screenshot 2024-12-20 at 13 04 05" src="https://github.com/user-attachments/assets/020719cc-e981-4639-aef4-56d44ac0297d" />
