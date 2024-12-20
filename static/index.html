@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="title">ollama的小助手</title>
+    <style>
+
+        /* 全局样式变量 */
+        :root {
+            --background-color: #F3F5FC;
+            --primary-color: #000;
+            --border-color: #000;
+            --text-color: #060607;
+            --scrollbar-color: #000;
+            --scrollbar-hover: #000;
+            --input-bg-color: #FFFFFF;
+            --input-border-color: #FFFFFF;
+            --user-color: #2D65F7;
+            --user-text-color: #FFFFFF;
+            --assistant-color: #FFFFFF;
+            --assistant-text-color: #000;
+            --button-text-color: #FFFFFF;
+        }
+
+        /* 通用样式 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        button, input[type="text"], .upload-container label {
+            border-radius: 10px;
+            font-size: 16px;
+            padding: 10px;
+            margin: 3px 0;
+        }
+
+        button:hover, .upload-container label:hover {
+            background-color: #2D65F7;
+        }
+
+        button {
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+
+        input[type="text"]:focus, button:focus {
+            outline: none;
+            /*border-color: #8e867f;*/
+            /*box-shadow: 0 0 5px rgba(142, 134, 127, 0.5);*/
+        }
+
+        select {
+            padding: 5px;
+            font-size: 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            cursor: pointer;
+            width: 150px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .options-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 聊天框样式 */
+        #chat-box {
+            width: 90%;
+            max-width: 1000px;
+            margin: 3px auto;
+            height: 88vh;
+            /*border: 1px solid var(--border-color);*/
+            border-radius: 12px;
+            background-color: var(--background-color);
+            /*box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);*/
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            position: relative;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 70px;
+            width: auto;
+            height: auto;
+            /*border-top: 1px solid var(--border-color);*/
+            /*border-bottom: 1px solid var(--border-color);*/
+            padding: 10px 0;
+            margin-bottom: 3px;
+        }
+
+        .message {
+            margin: 3px 0;
+            padding: 10px;
+            border-radius: 8px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .message.user {
+            display: flex; /* 使用 Flexbox 布局 */
+            justify-content: flex-end; /* 子元素靠右对齐 */
+        }
+
+        .message.user p {
+            background-color: var(--user-color); /* 背景颜色 */
+            display: inline-block; /* 宽度根据内容动态调整 */
+            padding: 10px; /* 内边距，增加视觉美感 */
+            border-radius: 8px; /* 圆角效果 */
+            max-width: 80%; /* 限制最大宽度为父容器的 80% */
+            word-wrap: break-word; /* 长内容自动换行 */
+            text-align: left; /* 文本内容左对齐 */
+            color: var(--user-text-color);
+            margin: 0; /* 去掉段落的默认外边距 */
+        }
+
+
+        .message.assistant {
+            display: flex; /* 使用 Flexbox 布局 */
+            flex-direction: column;
+            justify-content: flex-start; /* 子元素靠右对齐 */
+        }
+
+        .message.assistant pre {
+            background-color: var(--assistant-color); /* 背景颜色 */
+            display: inline-block; /* 宽度根据内容动态调整 */
+            padding: 10px; /* 内边距，增加视觉美感 */
+            border-radius: 8px; /* 圆角效果 */
+            /*max-width: 80%; !* 限制最大宽度为父容器的 80% *!*/
+            word-wrap: break-word; /* 长内容自动换行 */
+            text-align: left; /* 文本内容左对齐 */
+            color: var(--assistant-text-color);
+            margin: 0; /* 去掉段落的默认外边距 */
+        }
+
+        .message.assistant table {
+            background-color: #c7e4c7; /* 背景颜色 */
+            display: inline-block; /* 宽度根据内容动态调整 */
+            padding: 10px; /* 内边距，增加视觉美感 */
+            border-radius: 8px; /* 圆角效果 */
+            /*max-width: 80%; !* 限制最大宽度为父容器的 80% *!*/
+            word-wrap: break-word; /* 长内容自动换行 */
+            text-align: left; /* 文本内容左对齐 */
+            color: var(--assistant-text-color);
+            margin: 0; /* 去掉段落的默认外边距 */
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 3px;
+            /*box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
+        }
+
+        .upload-container {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            color: var(--button-text-color);
+        }
+
+        .upload-container input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .upload-container label {
+            display: block;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .button-container {
+            display: flex; /* 使用 Flexbox 布局 */
+            justify-content: flex-end; /* 左对齐按钮 */
+            align-items: center; /* 垂直居中 */
+            gap: 10px; /* 按钮之间的间距 */
+        }
+
+        .upload-container label {
+            display: inline-block; /* 保证 label 的样式是块状且支持水平排列 */
+            text-align: center; /* 文本居中 */
+            background-color: var(--primary-color); /* 可选：上传图片按钮背景颜色 */
+            padding: 10px; /* 可选：增加按钮的点击区域 */
+            border-radius: 6px; /* 可选：圆角效果 */
+            cursor: pointer; /* 鼠标移入时显示手型指针 */
+            text-color: var(--button-text-color);
+        }
+
+        .prompt {
+            background: var(--input-bg-color);
+            color: var(--assistant-text-color);
+            border: none;
+            outline: none;
+        }
+
+        #sendButton {
+            padding: 10px; /* 可选：发送按钮内边距 */
+            border: none; /* 可选：去掉按钮边框 */
+            border-radius: 6px; /* 可选：圆角效果 */
+            background-color: var(--primary-color); /* 可选：设置按钮背景色 */
+            color: white; /* 可选：按钮文本颜色 */
+            cursor: pointer; /* 鼠标移入时显示手型指针 */
+        }
+
+        #sendButton:hover {
+            background-color: #0056b3; /* 鼠标悬停时更深的蓝色 */
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--scrollbar-color);
+            border-radius: 4px;
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--scrollbar-hover);
+        }
+
+        /* 动画 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .flush {
+            background: var(--primary-color);
+            color: var(--button-text-color);
+            position: absolute;
+            padding: 10px; /* 可选：发送按钮内边距 */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            border: none;
+            border-radius: 6px; /* 可选：圆角效果 */
+            background-color: var(--primary-color); /* 可选：设置按钮背景色 */
+            cursor: pointer; /* 鼠标移入时显示手型指针 */
+        }
+
+        /* 响应式设计 */
+        @media screen and (max-width: 768px) {
+            #chat-box {
+                width: 92%;
+                height: 90vh;
+                padding: 15px;
+            }
+
+            h2 {
+                font-size: 18px;
+            }
+
+            input[type="text"], button, .upload-container label {
+                font-size: 14px;
+                padding: 10px;
+            }
+        }
+
+    </style>
+    <script type="module">
+        import {marked} from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
+
+        window.marked = marked;
+    </script>
+</head>
+<body>
+<div id="chat-box">
+    <button id="flush" class="flush" onclick="location.reload();">重置</button>
+    <div class="options-container">
+        <select id="theme-switcher" onchange="changeTheme(this.value)">
+            <option value="morandi">白天模式</option>
+            <option value="dark">黑夜模式</option>
+        </select>
+        <select id="language-switcher" onchange="toggleLanguage(this.value)">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+            <option value="ja">日本語</option>
+            <option value="fr">Français</option>
+        </select>
+    </div>
+    <div style="text-align: left; margin-bottom: 10px; position: absolute;margin-top: 50px;">
+        <span id="info-text" style="font-size: 14px; color: #F44336; font-weight: bold;">
+            ⚠️ 回答不完全正确，仅供参考！
+        </span>
+    </div>
+    <div id="messages"></div>
+
+    <input type="text"
+           id="prompt" class="prompt" placeholder="在这输入你要发送的信息..." onkeydown="handleKeyDown(event)"/>
+    <div class="button-container">
+        <select id="model-select" onchange="updateModelSet(this.value)" style="width: 150px">
+        </select>
+        <div class="upload-container">
+            <label for="fileInput">📁 上传图片</label>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleImageInput(event)"/>
+        </div>
+        <!-- 将录音按钮保留注释状态 -->
+        <!-- <button id="recordButton">🎙️ 长按录音(暂不能用,建议使用输入法的语音转文字)</button> -->
+        <button id="sendButton" onclick="sendMessage()">发送</button>
+    </div>
+</div>
+<script>
+    let conversationHistory = [
+        {
+            role: "system",
+            content: "You're a multilingual assistant that answers questions in the language of the question."
+        }
+    ];
+    let uploadedImagePath = null;
+    let currentLanguage = "zh";
+
+    let model_set = '';
+
+    const translations = {
+        zh: {
+            title: "ollama的小助手",
+            promptPlaceholder: "在这输入你要发送的信息...",
+            uploadLabel: "📁 上传图片",
+            sendButton: "发送",
+            tip: "⚠️ 回答不完全正确，仅供参考！",
+            reset: "重置",
+        },
+        en: {
+            title: "ollama's Assistant",
+            promptPlaceholder: "Type your message here...",
+            uploadLabel: "📁 Upload Image",
+            sendButton: "Send",
+            tip: "⚠️ Answer not complete, for reference only.",
+            reset: "Reset"
+        },
+        de: {
+            title: "ollama Assistent",
+            promptPlaceholder: "Geben Sie Ihre Nachricht hier ein...",
+            uploadLabel: "📁 Bild hochladen",
+            sendButton: "Senden",
+            tip: "⚠️ Antwort nicht vollständig, nur für Referenz.",
+            reset: "Neu starten"
+        },
+        ja: {
+            title: "ollamaのアシスタント",
+            promptPlaceholder: "ここにメッセージを入力してください...",
+            uploadLabel: "📁 画像をアップロード",
+            sendButton: "送信",
+            tip: "⚠️ 回答が不完全です。参考目的のみ。",
+            reset: "リセット"
+        },
+        fr: {
+            title: "Assistant de ollama",
+            promptPlaceholder: "Tapez votre message ici...",
+            uploadLabel: "📁 Télécharger l'image",
+            sendButton: "Envoyer",
+            tip: "⚠️ Réponse incomplète, uniquement pour référence.",
+            reset: "Réinitialiser"
+        }
+    };
+    const themes = {
+        morandi: {
+            "--background-color": "#F3F5FC", // 莫兰迪淡雅白米色
+            "--primary-color": "#000",   // 莫兰迪清新浅褐
+            "--border-color": "#000",    // 柔和浅灰褐边框
+            "--text-color": "#060607",      // 深灰褐文字色
+            "--input-bg-color": "#FFFFFF",  // 输入框背景白色
+            "--input-border-color": "#FFFFFF", // 输入框边框浅褐色
+            "--scrollbar-color": "#7E7E7E", // 滚动条莫兰迪灰
+            "--scrollbar-hover": "#a79f96",  // 滚动条悬停灰
+            "--user-color": "#2672ED",
+            "--user-text-color": "#FFFFFF",
+            "--assistant-color": "#FFFFFF",
+            "--assistant-text-color": "#000",
+            "--button-text-color": "#FFFFFF"
+
+        },
+        dark: {
+            "--background-color": "#262630", // 深莫兰迪黑灰
+            "--primary-color": "#595965",   // 深莫兰迪褐
+            "--border-color": "#61564d",    // 深灰褐边框
+            "--text-color": "#F5F9FFF2",      // 柔和浅白
+            "--input-bg-color": "#595965",  // 输入框背景深灰
+            "--input-border-color": "#595965", // 输入框边框深灰褐
+            "--scrollbar-color": "#45454E", // 滚动条深灰
+            "--scrollbar-hover": "#000",  // 滚动条悬停颜色
+            "--user-color": "#2672ED",
+            "--user-text-color": "#FFFFFF",
+            "--assistant-color": "#31313A",
+            "--assistant-text-color": "#FFFFFF",
+            "--button-text-color": "#FFFFFF"
+        }
+    };
+
+    function changeTheme(themeName) {
+        const root = document.documentElement;
+        const theme = themes[themeName];
+        for (const [key, value] of Object.entries(theme)) {
+            root.style.setProperty(key, value);
+        }
+    }
+
+    let isRecording = false;
+    let mediaRecorder;
+    let audioChunks = [];
+    let startTime;
+
+    const recordButton = document.getElementById("recordButton");
+
+    // recordButton.addEventListener("mousedown", startRecording);
+    // recordButton.addEventListener("mouseup", stopRecording);
+
+    async function startRecording() {
+        if (isRecording) return;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            startTime = Date.now();
+            recordButton.innerText = "录音中...";
+            recordButton.style.backgroundColor = "#ff5252";
+        } catch (error) {
+            alert("无法启动录音，请检查麦克风权限！");
+        }
+    }
+
+    async function stopRecording() {
+        if (!isRecording) return;
+
+        const duration = Date.now() - startTime;
+        if (duration < 1000) {
+            alert("录音时间太短，请至少录制 1 秒！");
+            resetRecordingUI();
+            return;
+        }
+
+        mediaRecorder.stop();
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, {type: "audio/wav"});
+            audioChunks = [];
+            resetRecordingUI();
+
+            try {
+                const formData = new FormData();
+                formData.append("file", audioBlob, "audio.wav");
+
+                const response = await fetch("/upload", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error("上传录音文件失败！");
+                }
+
+                const data = await response.json();
+                transcribeAudio(data.filePath);
+            } catch (error) {
+                alert("上传录音失败，请重试！");
+            }
+        };
+    }
+
+    function resetRecordingUI() {
+        isRecording = false;
+        recordButton.innerText = "🎙️ 长按录音";
+        recordButton.style.backgroundColor = "";
+    }
+
+    async function transcribeAudio(audioPath) {
+        try {
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    model: "whisper",
+                    messages: [{role: "user", content: "audio", images: [audioPath]}],
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("语音转文字失败！");
+            }
+
+            const result = await response.json();
+            displayMessage("assistant", result.transcription);
+        } catch (error) {
+            alert("语音转文字失败，请重试！");
+        }
+    }
+
+    function displayMessage(role, content) {
+        const messagesDiv = document.getElementById("messages");
+        const message = document.createElement("div");
+        message.className = `message ${role}`;
+
+        // 检查并渲染 Markdown
+        if (typeof content === "string" && typeof window.marked === "function") {
+            message.innerHTML = window.marked(content, {
+                sanitize: true,
+                gfm: true,
+            });
+        } else {
+            message.innerText = content; // 回退到纯文本
+        }
+
+        messagesDiv.appendChild(message);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+
+    function toggleLanguage(language) {
+        currentLanguage = language;
+        const lang = translations[language];
+        //document.getElementById("title").innerText = lang.title;
+        document.getElementById("prompt").placeholder = lang.promptPlaceholder;
+        document.querySelector(".upload-container label").innerText = lang.uploadLabel;
+        document.getElementById("sendButton").innerText = lang.sendButton;
+        document.getElementById("flush").innerText = lang.reset;
+        document.getElementById("info-text").innerText = lang.tip;
+        document.getElementById("title").innerText = lang.title;
+    }
+
+    async function handleImageInput(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const response = await fetch("/upload", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to upload image.");
+                }
+
+                const data = await response.json();
+                uploadedImagePath = data.filePath;
+
+                const messagesDiv = document.getElementById("messages");
+                const imagePreview = document.createElement("div");
+                imagePreview.className = "message user";
+                const img = document.createElement("img");
+                img.src = uploadedImagePath;
+                imagePreview.appendChild(img);
+                messagesDiv.appendChild(imagePreview);
+
+                event.target.value = "";
+                scrollToBottom();
+            } catch (error) {
+                console.error("Error uploading image:", error);
+                alert("Failed to upload image.");
+            }
+        }
+    }
+
+    async function fetchModelData() {
+        const selectElement = document.getElementById("model-select");
+
+        try {
+            // 发起GET请求获取模型数据
+            const response = await fetch("/get-list", {
+                method: "GET",  // 使用GET请求
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const modelData = await response.json();
+
+            // 清空之前的选项
+            selectElement.innerHTML = '';
+            model_set = modelData[0].name
+            modelData.forEach(model => {
+                let optionText = `${model.name}`; // 自定义文字
+                if (model.name === 'llama3.2-vision:latest') {
+                    optionText = `支持图片${model.name}`;
+                }
+
+                const option = document.createElement("option");
+                option.value = model.name; // 设置模型的 name 为选项的值
+                option.textContent = optionText; // 显示名称和自定义文字
+
+                // 检查是否需要设置默认选中项
+                if (model.name === 'llama3.2-vision:latest') {
+                    option.selected = true;
+                    model_set = 'llama3.2-vision:latest';
+                }
+                selectElement.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Error:", error.message);
+            alert(`Error: ${error.message}`);
+        }
+    }
+
+    // 处理下拉框变化时的选择方法
+    function updateModelSet(selectedModel) {
+        model_set = selectedModel;
+        console.log("Selected model:", model_set);
+    }
+
+    // 页面加载时调用该函数
+    document.addEventListener("DOMContentLoaded", fetchModelData);
+
+
+    async function sendMessage() {
+        const prompt = document.getElementById("prompt").value.trim();
+        const messagesDiv = document.getElementById("messages");
+
+        if (!prompt && !uploadedImagePath) {
+            alert("Please enter a message or upload an image.");
+            return;
+        }
+
+        if (prompt) {
+            // 用户消息支持 Markdown
+            displayMessage("user", prompt);
+        }
+
+        const userMessageObject = {
+            role: "user",
+            content: prompt || "这个图片说了什么",
+        };
+
+        if (uploadedImagePath) {
+            userMessageObject.images = [uploadedImagePath];
+        }
+
+        conversationHistory.push(userMessageObject);
+
+        document.getElementById("prompt").value = "";
+        uploadedImagePath = null;
+
+        try {
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    model: model_set,
+                    messages: [...conversationHistory],
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let assistantMessage = document.createElement("div");
+            assistantMessage.className = "message assistant";
+            messagesDiv.appendChild(assistantMessage);
+
+            let buffer = "";
+            let assistantContent = ""; // 存储完整的 Markdown 消息内容
+
+            while (true) {
+                const {value, done} = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, {stream: true});
+                const lines = buffer.split("\n");
+                buffer = lines.pop(); // 保留未完成的部分
+
+                for (const line of lines) {
+                    try {
+                        const parsedChunk = JSON.parse(line.trim());
+                        if (parsedChunk.message && parsedChunk.message.content) {
+                            const chunkContent = parsedChunk.message.content;
+                            assistantContent += chunkContent;
+
+                            // 渲染当前内容为 Markdown
+                            assistantMessage.innerHTML = window.marked(assistantContent, {
+                                sanitize: true, // 安全渲染
+                                gfm: true,      // GitHub 风格 Markdown
+                            });
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse chunk:", line);
+                    }
+                }
+
+                scrollToBottom();
+            }
+
+            // 将完整消息存储到会话历史中
+            conversationHistory.push({role: "assistant", content: assistantContent});
+        } catch (error) {
+            console.error("Error:", error.message);
+            alert(`Error: ${error.message}`);
+        }
+    }
+
+
+    function scrollToBottom() {
+        const messagesDiv = document.getElementById("messages");
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function handleKeyDown(event) {
+        if (event.key === "Enter") {
+            sendMessage();
+        }
+    }
+</script>
+</body>
+</html>
